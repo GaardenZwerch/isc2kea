@@ -6,6 +6,15 @@ use crate::{
     IscDhcpOptionsV4, IscDhcpOptionsV6, IscRangeV4, IscRangeV6, IscStaticMap, IscStaticMapV6,
 };
 
+fn isc_iface_enabled(iface: &Element) -> bool {
+    get_child_ci(iface, "enable")
+        .and_then(|e| e.get_text())
+        .map(|value| {
+            let value = value.trim();
+            !value.is_empty() && value != "0"
+        })
+        .unwrap_or(false)
+}
 /// Extract ISC static mappings from the XML tree
 pub fn extract_isc_mappings(root: &Element) -> Result<Vec<IscStaticMap>> {
     let mut mappings = Vec::new();
@@ -253,6 +262,9 @@ pub fn extract_isc_ranges(root: &Element) -> Result<Vec<IscRangeV4>> {
     if let Some(dhcpd) = get_child_ci(root, "dhcpd") {
         for iface_node in dhcpd.children.iter() {
             if let Some(iface_elem) = iface_node.as_element() {
+                if !isc_iface_enabled(iface_elem) {
+                    continue;
+                }
                 let iface_name = iface_elem.name.clone();
                 for child in iface_elem.children.iter() {
                     if let Some(range) = child.as_element() {
@@ -290,6 +302,9 @@ pub fn extract_isc_ranges_v6(root: &Element) -> Result<Vec<IscRangeV6>> {
     if let Some(dhcpdv6) = get_child_ci(root, "dhcpdv6") {
         for iface_node in dhcpdv6.children.iter() {
             if let Some(iface_elem) = iface_node.as_element() {
+                if !isc_iface_enabled(iface_elem) {
+                    continue;
+                }
                 let iface_name = iface_elem.name.clone();
                 for child in iface_elem.children.iter() {
                     if let Some(range) = child.as_element() {
